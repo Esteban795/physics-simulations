@@ -46,17 +46,19 @@ void DrawCircle(SDL_Renderer * renderer, int32_t centreX, int32_t centreY, int32
       }
    }
 }
-int rand_between(int l, int r) {
-  return (int)( (rand() / (RAND_MAX * 1.0f)) * (r - l) + l);
+
+double rand_between(int l, int r) {
+  return ( (rand() / (RAND_MAX * 1.0f)) * (r - l) + l);
 }
 
 
 struct Ball {
   int x;
   int y;
-  int velX;
-  int velY;
-  int radius;
+  double velX;
+  double velY;
+  double radius;
+  double bounciness;
 };
 
 typedef struct Ball ball;
@@ -70,11 +72,11 @@ bool check_y_bound(ball b){
 }
 
 void apply_velocity(ball* b){
-  if (!check_x_bound(*b)){
-    b->velX *= -1;
-  }
   if (!check_y_bound(*b)){
-    b->velY *= -1;
+    b->velY *= -1.0 * b->bounciness;
+  }
+  if (!check_x_bound(*b)){
+    b->velX *= -1.0 * b->bounciness;
   }
   b->x += b->velX;
   b->y += b->velY;
@@ -89,10 +91,18 @@ int main(void){
     int x = WIDTH/2;
     int y = HEIGHT/2;
     DrawCircle(renderer,x,y,40);
-    int velX = rand_between(1,10);
-    int velY = rand_between(1,10);
-    ball b = {.x=x,.y = y,.velX=velX,.velY=velY,.radius = 30};
-    while (true){
+    double velX = rand_between(1,10);
+    double velY = rand_between(1,10);
+    printf("Velx : %f, Vely : %f",velX,velY);
+    ball b = {.x=x,.y = y,.velX=velX,.velY=velY,.radius = 30.0,.bounciness=1.0};
+    int running = 1;
+    SDL_Event e;
+    while (running){
+      while (SDL_PollEvent(&e)){
+        if (e.type == SDL_KEYDOWN) {
+          if (e.key.keysym.sym == SDLK_q) running = 0;
+        }
+      }
       SDL_SetRenderDrawColor(renderer,0,0,0,255);
       SDL_RenderClear(renderer);
       apply_velocity(&b);
@@ -101,11 +111,10 @@ int main(void){
       SDL_RenderPresent(renderer);
       SDL_Delay(7);
     }
-    SDL_Delay(5000);
     if (renderer != NULL) SDL_DestroyRenderer(renderer);
     if (window != NULL) SDL_DestroyWindow(window);
     return 0;
 }
 
 
-//gcc test.c -o -Wall -Wextra -Wvla -fsanitize=address $(sdl2-config --cflags --libs) -lSDL2
+//gcc test.c -o test -Wall -Wextra -Wvla -fsanitize=address $(sdl2-config --cflags --libs) -lSDL2
