@@ -131,8 +131,8 @@ int main(void){
 
     int running = 1;
     SDL_Event e;
-    float init_velX = 30;
-    float init_velY = 40;
+    float init_velX = rand_between(0,50);
+    float init_velY =  rand_between(0,50);
     ball* current_frame_ball = create_ball(400.0,400.0,init_velX,init_velY,30);
     ball* prev_frame_ball =  create_ball(400.0,400.0,init_velX,init_velY,30);
     SDL_SetRenderDrawColor(renderer,255,255,255,255);
@@ -170,6 +170,9 @@ int main(void){
                 case SDLK_q:
                     running = 0;
                     break;
+                case SDLK_1:
+                    current_frame_ball->velX = rand_between(10,30) - 20;
+                    current_frame_ball->velY = -rand_between(20,60);
                 default:
                     break;
                 }
