@@ -1,2 +1,4 @@
 # 3DPolygonViewer
-Developping a software to render polygon in 3D, and a proper camera in SDL2, C language.
+Some random physics simulation.
+
+Goes from particle elastic collisions, to rope physics and everything I can think of..
