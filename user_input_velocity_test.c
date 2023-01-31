@@ -13,6 +13,9 @@
 #define BALL_BOUNCINESS 0.9
 #define GROUND_FRICTION 0.9
 #define GROUND_BOUNCINESS 0.9
+#define NB_BALLS 2
+
+#define BALL_RADIUS 30
 
 int is_distance(int x_pos_0,int y_pos_0,int x_pos_1,int y_pos_1,float distance){
     int horiz_dist = x_pos_1 - x_pos_0;
@@ -115,7 +118,7 @@ void update_ball(ball* b){
 }
 
 
-bool checkCollision(ball* b){
+bool check_ground_collision(ball* b){
     if (b->y + b->radius > HEIGHT){
         b->y = HEIGHT - b->radius;
         b->velY *= GROUND_BOUNCINESS;
@@ -151,15 +154,6 @@ bool check_ball_y_collision(ball* b1,ball* b2){
     return abs_float(b1->y - b2->y) < 5 + b1->radius + b2->radius;
 }
 
-
-void apply_collision(ball* b1,ball* b2){
-    float b1_velX = b1->velX;
-    float b1_velY = b1->velY;
-    b1->velX = (b1->velX * (b1->mass - b2->mass) + 2 * b2->mass * b2->velX)/(b1->mass + b2->mass);
-    b1->velY = (b1->velY * (b1->mass - b2->mass) + 2 * b2->mass * b2->velY)/(b1->mass + b2->mass);
-    b2->velX = (b2->velX * (b2->mass - b1->mass) + 2 * b1->mass * b1_velX)/(b1->mass + b2->mass);
-    b2->velY = (b2->velY * (b2->mass - b1->mass) + 2 * b1->mass * b1_velY)/(b1->mass + b2->mass);
-}
 
 float velocity_magnitude(ball* b1){
     return sqrt(b1->velX * b1->velX + b1->velY * b1->velY);
@@ -215,83 +209,63 @@ int main(void){
     SDL_Renderer* renderer;
     int status = start_SDL(&window,&renderer,WIDTH,HEIGHT,"test");
     if (status == 1) return EXIT_FAILURE;
-
     int running = 1;
     SDL_Event e;
-    ball* b1 = create_ball(WIDTH/4,HEIGHT/2 - 100,10,0,30,20);
-    ball* b2 = create_ball(2 * WIDTH/4,HEIGHT/2,-10,0,30,10);
-    ball* b3 = create_ball(3 * WIDTH/4,HEIGHT/2,10,20,30,10);
+    ball** tab_balls = malloc(sizeof(ball*) * NB_BALLS);
+    ball** prev_tab_balls = malloc(sizeof(ball*) * NB_BALLS);
+    for (int i = 0; i < NB_BALLS;i++){
+        tab_balls[i] = create_ball((i + 1) * WIDTH/4,HEIGHT/2,10,-10,BALL_RADIUS,20);
+        prev_tab_balls[i] = create_ball((i + 1) * WIDTH/4,HEIGHT/2,10,-10,BALL_RADIUS,20);
+    }
 
-
-    ball* prev_b1 = create_ball(WIDTH/4,HEIGHT/2 - 100,10,0,30,20);
-    ball* prev_b2 = create_ball(2 * WIDTH/4,HEIGHT/2,-10,0,30,10);
-    ball* prev_b3 = create_ball(3 * WIDTH/4,HEIGHT/2,10,20,30,10);
-    int bup_mouse_x,bup_mouse_y;
     SDL_SetRenderDrawColor(renderer,255,255,255,255);
     SDL_RenderClear(renderer);
-    SDL_SetRenderDrawColor(renderer,255,0,0,255);
-    DrawCircle(renderer,b1->x,b1->y,b1->radius);
-    SDL_SetRenderDrawColor(renderer,0,0,255,255);
-    DrawCircle(renderer,b2->x,b2->y,b2->radius);
-    SDL_SetRenderDrawColor(renderer,0,0,0,255);
-    DrawCircle(renderer,b3->x,b3->y,b3->radius);
+    SDL_SetRenderDrawColor(renderer,255,255,255,255);
+    for (int i = 0; i < NB_BALLS;i++){
+        DrawCircle(renderer,tab_balls[i]->x,tab_balls[i]->y,BALL_RADIUS);
+    }
     SDL_RenderPresent(renderer);
 
     while (running){
         SDL_Delay(FRAME_DELAY);
 
-        copy_ball(b1,prev_b1);
-        copy_ball(b2,prev_b2);
-        copy_ball(b3,prev_b3);
+        for (int i = 0; i < NB_BALLS;i++){
+            copy_ball(tab_balls[i],prev_tab_balls[i]);
+            update_ball(tab_balls[i]);
+        }
+
         SDL_SetRenderDrawColor(renderer,255,255,255,255);
         SDL_RenderClear(renderer);
 
-        update_ball(b1);
-        update_ball(b2);
-        update_ball(b3);
-        if (checkCollision(b1)){
-            b1->velY *= -0.8;
-            if (abs_float(b1->velY) < 2.5){
-                b1->velX *= GROUND_FRICTION;
-                b1->velY = 0;
-            } 
-        }
-        if (checkCollision(b2)){
-            b2->velY *= -0.8;
-            if (abs_float(b2->velY) < 2.5){
-                b2->velX *= GROUND_FRICTION;
-                b2->velY = 0;
-            } 
-        }
-        if (checkCollision(b3)){
-            b3->velY *= -0.8;
-            if (abs_float(b3->velY) < 2.5){
-                b3->velX *= GROUND_FRICTION;
-                b3->velY = 0;
-            } 
-        }
-        if (check_wall_collision(b1)) b1->velX *= -WALL_BOUNCINESS;
-        if (check_wall_collision(b2)) b2->velX *= -WALL_BOUNCINESS;
-        if (check_wall_collision(b3)) b3->velX *= -WALL_BOUNCINESS;
 
-        if (check_ball_y_collision(b1,b2) && check_ball_x_collision(b1,b2)){
-            //apply_collision(b1,b2);
-            do_elastic_collision(b1,b2);
+        for (int i = 0; i < NB_BALLS;i++){
+            if (check_ground_collision(tab_balls[i])){
+                tab_balls[i]->velY *= -0.8;
+                if (abs_float(tab_balls[i]->velY) < 2.5){
+                    tab_balls[i]->velX *= GROUND_FRICTION;
+                    tab_balls[i]->velY = 0;
+                } 
+            }
         }
-        if (check_ball_y_collision(b1,b3) && check_ball_x_collision(b1,b3)){
-            //apply_collision(b1,b3);
-            do_elastic_collision(b1,b3);
+
+        for (int i = 0; i < NB_BALLS;i++){
+            if (check_wall_collision(tab_balls[i])) {
+                tab_balls[i]->velX *= -WALL_BOUNCINESS;
+            }
         }
-        if (check_ball_y_collision(b2,b3) && check_ball_x_collision(b2,b3)){
-            //apply_collision(b2,b3);
-            do_elastic_collision(b2,b3);
+
+        for (int i = 0; i < NB_BALLS;i++){
+            for (int j = i; j < NB_BALLS;j++){
+                if (check_ball_y_collision(tab_balls[i],tab_balls[j]) && check_ball_x_collision(tab_balls[i],tab_balls[j])){
+                    do_elastic_collision(tab_balls[i],tab_balls[j]);
+                }
+            }
         }
-        SDL_SetRenderDrawColor(renderer,255,0,0,255);
-        DrawCircle(renderer,(int)b1->x,(int)b1->y,b1->radius);
-        SDL_SetRenderDrawColor(renderer,0,0,255,255);
-        DrawCircle(renderer,(int)b2->x,(int)b2->y,b2->radius);
-        SDL_SetRenderDrawColor(renderer,0,0,0,255);
-        DrawCircle(renderer,(int)b3->x,(int)b3->y,b3->radius);
+
+        SDL_SetRenderDrawColor(renderer,255,255,255,255);
+        for (int i = 0; i < NB_BALLS;i++){
+            DrawCircle(renderer,tab_balls[i]->x,tab_balls[i]->y,BALL_RADIUS);
+        }
         SDL_RenderPresent(renderer);
         while (SDL_PollEvent(&e)){
             if (e.type == SDL_KEYDOWN){
@@ -303,20 +277,17 @@ int main(void){
                     break;
                 }
             }
-            else if (e.type == SDL_MOUSEBUTTONUP){
-                SDL_GetMouseState(&bup_mouse_x,&bup_mouse_y);
-                b1->velY = (bup_mouse_y - b1->y)/30;
-                b1->velX = (bup_mouse_x - b1->x)/30;
-            }
         }
     }
-    free(b1);
-    free(b2);
-    free(prev_b1);
-    free(prev_b2);
+    for (int i = 0; i < NB_BALLS;i++){
+        free(tab_balls[i]);
+        free(prev_tab_balls[i]);
+    }
+    free(tab_balls);
+    free(prev_tab_balls);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     return 0;
 }
 
-//gcc user_input_velocity.c -o uiv -Wall -Wextra -Wvla -fsanitize=address $(sdl2-config --cflags --libs) -lSDL2 -lm
+//gcc user_input_velocity_test.c -o uivt -Wall -Wextra -Wvla -fsanitize=address $(sdl2-config --cflags --libs) -lSDL2 -lm
