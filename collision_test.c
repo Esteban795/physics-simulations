@@ -142,7 +142,8 @@ int main(void){
 
     ball* prev_b1 = create_ball(WIDTH/4,HEIGHT/2,10,0,30);
     ball* prev_b2 = create_ball(3 * WIDTH/4,HEIGHT/2,-10,0,30);
-
+    int bdown_mouse_x,bdown_mouse_y;
+    int bup_mouse_x,bup_mouse_y;
     SDL_SetRenderDrawColor(renderer,255,255,255,255);
     SDL_RenderClear(renderer);
     SDL_SetRenderDrawColor(renderer,255,0,0,255);
@@ -188,6 +189,12 @@ int main(void){
                 default:
                     break;
                 }
+            }
+            else if (e.type == SDL_MOUSEBUTTONDOWN){
+                SDL_GetMouseState(&bdown_mouse_x,&bdown_mouse_y);
+            }
+            else if (e.type == SDL_MOUSEBUTTONUP){
+                SDL_GetMouseState(&bup_mouse_x,&bup_mouse_y);
             }
         }
     }

@@ -2,19 +2,35 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-
+#include <math.h>  
 
 #define WIDTH 600
 #define HEIGHT 600
-#define FRAME_DELAY 17
+#define FRAME_DELAY 16
 
 #define GRAVITY 1
-
-#define GROUND_BOUNCINESS 0.5
-#define WALL_BOUNCINESS 0.9
-
-
+#define WALL_BOUNCINESS 0.5
+#define BALL_BOUNCINESS 0.9
 #define GROUND_FRICTION 0.9
+#define GROUND_BOUNCINESS 0.9
+
+int is_distance(int x_pos_0,int y_pos_0,int x_pos_1,int y_pos_1,float distance){
+    int horiz_dist = x_pos_1 - x_pos_0;
+    int vert_dist = y_pos_1 - y_pos_0;
+    float points_dist = (
+        pow((float)horiz_dist, 2.0)
+        + pow((float)vert_dist, 2.0)
+    );
+
+    return (points_dist <= sqrt(distance));
+}
+
+struct vect2 {
+    float x;
+    float y;
+};
+
+typedef struct vect2 vect2;
 
 struct Ball {
     float x;
@@ -22,17 +38,19 @@ struct Ball {
     float velX;
     float velY;
     int radius;
+    int mass;
 };
 
 typedef struct Ball ball;
 
-ball* create_ball(float x,float y,float velX,float velY,int radius){
+ball* create_ball(float x,float y,float velX,float velY,int radius,int mass){
     ball* b = malloc(sizeof(ball));
     b->x = x;
     b->y = y;
     b->velX = velX;
     b->velY = velY;
     b->radius = radius;
+    b->mass = mass;
     return b;
 }
 
@@ -42,11 +60,13 @@ void copy_ball(ball* source,ball* dest){
     dest->velX = source->velX;
     dest->velY = source->velY;
     dest->radius = source->radius;
+    dest->mass = source->mass;
 }
 
 float rand_between(int l, int r) {
   return ( (rand() / (RAND_MAX * 1.0f)) * (r - l) + l);
 }
+
 
 void DrawCircle(SDL_Renderer* renderer, int32_t centreX, int32_t centreY, int32_t radius){
    const int32_t diameter = (radius * 2);
@@ -78,13 +98,6 @@ void DrawCircle(SDL_Renderer* renderer, int32_t centreX, int32_t centreY, int32_
    }
 }
 
-bool check_x_bound(ball b){
-  return (b.x - b.radius) > 0 && (b.x + b.radius < WIDTH);
-}
-
-bool check_y_bound(ball b){
-  return (b.y - b.radius > 0) && (b.y + b.radius < HEIGHT);
-}
 
 int start_SDL(SDL_Window** window,SDL_Renderer** renderer,int width,int height, const char* title){
     if (SDL_Init(SDL_INIT_VIDEO) != 0) return 1;
@@ -105,6 +118,7 @@ void update_ball(ball* b){
 bool checkCollision(ball* b){
     if (b->y + b->radius > HEIGHT){
         b->y = HEIGHT - b->radius;
+        b->velY *= GROUND_BOUNCINESS;
         return true;
     }
     return false;
@@ -125,6 +139,26 @@ float abs_float(float n){
     return n > 0 ? n:-n;
 }
 
+
+bool check_ball_x_collision(ball* b1,ball* b2){
+    return abs_float(b1->x - b2->x) < b1->radius + b2->radius;
+}
+
+bool check_ball_y_collision(ball* b1,ball* b2){
+    return abs_float(b1->y - b2->y) < b1->radius + b2->radius;
+}
+
+
+void apply_collision(ball* b1,ball* b2){
+    float b1_velX = b1->velX;
+    float b1_velY = b1->velY;
+    b1->velX = (b1->velX * (b1->mass - b2->mass) + 2 * b2->mass * b2->velX)/(b1->mass + b2->mass);
+    b1->velY = (b1->velY * (b1->mass - b2->mass) + 2 * b2->mass * b2->velY)/(b1->mass + b2->mass);
+    b2->velX = (b2->velX * (b2->mass - b1->mass) + 2 * b1->mass * b1_velX)/(b1->mass + b2->mass);
+    b2->velY = (b2->velY * (b2->mass - b1->mass) + 2 * b1->mass * b1_velY)/(b1->mass + b2->mass);
+}
+
+
 int main(void){
     SDL_Window* window;
     SDL_Renderer* renderer;
@@ -133,37 +167,51 @@ int main(void){
 
     int running = 1;
     SDL_Event e;
-    float init_velX = rand_between(0,50);
-    float init_velY =  rand_between(0,50);
-    ball* current_frame_ball = create_ball(WIDTH/2,HEIGHT/2,init_velX,init_velY,30);
-    ball* prev_frame_ball =  create_ball(WIDTH/2,HEIGHT/2,init_velX,init_velY,30);
+    ball* b1 = create_ball(WIDTH/4,HEIGHT/2,10,0,30,20);
+    ball* b2 = create_ball(3 * WIDTH/4,HEIGHT/2,-10,0,30,10);
+
+    ball* prev_b1 = create_ball(WIDTH/4,HEIGHT/2,10,0,30,20);
+    ball* prev_b2 = create_ball(3 * WIDTH/4,HEIGHT/2,-10,0,30,10);
+    int bup_mouse_x,bup_mouse_y;
     SDL_SetRenderDrawColor(renderer,255,255,255,255);
     SDL_RenderClear(renderer);
-    DrawCircle(renderer,current_frame_ball->x,current_frame_ball->y,current_frame_ball->radius);
+    SDL_SetRenderDrawColor(renderer,255,0,0,255);
+    DrawCircle(renderer,b1->x,b1->y,b1->radius);
     SDL_RenderPresent(renderer);
-
 
     while (running){
         SDL_Delay(FRAME_DELAY);
 
-        copy_ball(current_frame_ball,prev_frame_ball);
+        copy_ball(b1,prev_b1);
+        copy_ball(b2,prev_b2);
         SDL_SetRenderDrawColor(renderer,255,255,255,255);
         SDL_RenderClear(renderer);
 
-        update_ball(current_frame_ball);
-        if (checkCollision(current_frame_ball)){
-            current_frame_ball->velY = -1 * GROUND_BOUNCINESS * current_frame_ball->velY;
-            if (abs_float(current_frame_ball->velY) < 2){
-                current_frame_ball->velX *= GROUND_FRICTION;
-                current_frame_ball->velY = 0;
+        update_ball(b1);
+        update_ball(b2);
+        if (checkCollision(b1)){
+            b1->velY *= -0.8;
+            if (abs_float(b1->velY) < 2.5){
+                b1->velX *= GROUND_FRICTION;
+                b1->velY = 0;
             } 
         }
-        if (check_wall_collision(current_frame_ball)){
-            current_frame_ball->velX = -1 * WALL_BOUNCINESS * current_frame_ball->velX;
-            //if (current_frame_ball->velX < 0.05) current_frame_ball->velX = 0;
+        if (checkCollision(b2)){
+            b2->velY *= -0.8;
+            if (abs_float(b2->velY) < 2.5){
+                b2->velX *= GROUND_FRICTION;
+                b2->velY = 0;
+            } 
         }
-        SDL_SetRenderDrawColor(renderer,0,0,0,255);
-        DrawCircle(renderer,(int)current_frame_ball->x,(int)current_frame_ball->y,current_frame_ball->radius);
+        if (check_wall_collision(b1)) b1->velX *= -WALL_BOUNCINESS;
+        if (check_wall_collision(b2)) b2->velX *= -WALL_BOUNCINESS;
+        if (check_ball_y_collision(b1,b2) && check_ball_x_collision(b1,b2)){
+            apply_collision(b1,b2);
+        }
+        SDL_SetRenderDrawColor(renderer,255,0,0,255);
+        DrawCircle(renderer,(int)b1->x,(int)b1->y,b1->radius);
+        SDL_SetRenderDrawColor(renderer,0,0,255,255);
+        DrawCircle(renderer,(int)b2->x,(int)b2->y,b2->radius);
         SDL_RenderPresent(renderer);
         while (SDL_PollEvent(&e)){
             if (e.type == SDL_KEYDOWN){
@@ -171,20 +219,24 @@ int main(void){
                 case SDLK_q:
                     running = 0;
                     break;
-                case SDLK_1:
-                    current_frame_ball->velX = rand_between(10,50) - 30;
-                    current_frame_ball->velY = -rand_between(20,40);
                 default:
                     break;
                 }
             }
+            else if (e.type == SDL_MOUSEBUTTONUP){
+                SDL_GetMouseState(&bup_mouse_x,&bup_mouse_y);
+                b1->velY = (bup_mouse_y - b1->y)/6;
+                b1->velX = (bup_mouse_x - b1->x)/6;
+            }
         }
     }
-    free(current_frame_ball);
-    free(prev_frame_ball);
+    free(b1);
+    free(b2);
+    free(prev_b1);
+    free(prev_b2);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     return 0;
 }
 
-//gcc ball_under_gravity.c -o bug -Wall -Wextra -Wvla -fsanitize=address $(sdl2-config --cflags --libs) -lSDL2
+//gcc user_input_velocity.c -o uiv -Wall -Wextra -Wvla -fsanitize=address $(sdl2-config --cflags --libs) -lSDL2 -lm
