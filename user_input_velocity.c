@@ -14,6 +14,10 @@
 #define GROUND_FRICTION 0.9
 #define GROUND_BOUNCINESS 0.9
 
+
+bool GRAVITY_ON = true;
+
+
 int is_distance(int x_pos_0,int y_pos_0,int x_pos_1,int y_pos_1,float distance){
     int horiz_dist = x_pos_1 - x_pos_0;
     int vert_dist = y_pos_1 - y_pos_0;
@@ -111,7 +115,7 @@ int start_SDL(SDL_Window** window,SDL_Renderer** renderer,int width,int height, 
 void update_ball(ball* b){
     b->x += b->velX;
     b->y += b->velY;
-    b->velY += GRAVITY;
+    if (GRAVITY_ON) b->velY += GRAVITY;
 }
 
 
@@ -223,9 +227,9 @@ int main(void){
     ball* b3 = create_ball(3 * WIDTH/4,HEIGHT/2,10,20,30,10);
 
 
-    ball* prev_b1 = create_ball(WIDTH/4,HEIGHT/2 - 100,10,0,30,20);
-    ball* prev_b2 = create_ball(2 * WIDTH/4,HEIGHT/2,-10,0,30,10);
-    ball* prev_b3 = create_ball(3 * WIDTH/4,HEIGHT/2,10,20,30,10);
+    /*ball* prev_b1 = create_ball(WIDTH/4,HEIGHT/2 - 100,3,0,30,20);
+    ball* prev_b2 = create_ball(2 * WIDTH/4,HEIGHT/2,-3,0,30,10);
+    ball* prev_b3 = create_ball(3 * WIDTH/4,HEIGHT/2,3,20,30,10);*/
     int bup_mouse_x,bup_mouse_y;
     SDL_SetRenderDrawColor(renderer,255,255,255,255);
     SDL_RenderClear(renderer);
@@ -240,9 +244,9 @@ int main(void){
     while (running){
         SDL_Delay(FRAME_DELAY);
 
-        copy_ball(b1,prev_b1);
+        /*copy_ball(b1,prev_b1);
         copy_ball(b2,prev_b2);
-        copy_ball(b3,prev_b3);
+        copy_ball(b3,prev_b3);*/
         SDL_SetRenderDrawColor(renderer,255,255,255,255);
         SDL_RenderClear(renderer);
 
@@ -251,21 +255,21 @@ int main(void){
         update_ball(b3);
         if (checkCollision(b1)){
             b1->velY *= -0.8;
-            if (abs_float(b1->velY) < 2.5){
+            if (abs_float(b1->velY) < 4){
                 b1->velX *= GROUND_FRICTION;
                 b1->velY = 0;
             } 
         }
         if (checkCollision(b2)){
             b2->velY *= -0.8;
-            if (abs_float(b2->velY) < 2.5){
+            if (abs_float(b2->velY) < 4){
                 b2->velX *= GROUND_FRICTION;
                 b2->velY = 0;
             } 
         }
         if (checkCollision(b3)){
             b3->velY *= -0.8;
-            if (abs_float(b3->velY) < 2.5){
+            if (abs_float(b3->velY) < 4){
                 b3->velX *= GROUND_FRICTION;
                 b3->velY = 0;
             } 
@@ -299,6 +303,8 @@ int main(void){
                 case SDLK_q:
                     running = 0;
                     break;
+                case SDLK_g:
+                    GRAVITY_ON = !GRAVITY_ON;
                 default:
                     break;
                 }
@@ -312,8 +318,10 @@ int main(void){
     }
     free(b1);
     free(b2);
-    free(prev_b1);
+    free(b3);
+    /*free(prev_b1);
     free(prev_b2);
+    free(prev_b3);*/
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     return 0;
