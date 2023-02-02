@@ -10,8 +10,8 @@ DEPENDENCIES = $(SRCDIR)/ball.c $(SRCDIR)/engine.c
 build:
 	gcc $(SRCDIR)/ball_under_gravity.c -o ./ball_under_gravity $(CFLAGS) $(DEPENDENCIES)
 
-run: ./ball_under_gravity
-	./ball_under_gravity
+run $(ARGS): ./ball_under_gravity
+	./ball_under_gravity ARGS
 
 clean:
 	rm ball_under_gravity
