@@ -3,7 +3,7 @@
 
 #include "vect2.h"
 #include "particle.h"
-#include "stick.h"
+
 
 struct Cloth {
     vect2 gravity;
@@ -20,9 +20,9 @@ typedef struct Cloth cloth;
 
 void cloth_draw(cloth* c,SDL_Renderer* renderer);
 
-void cloth_update(cloth* c,SDL_Renderer* renderer,mouse* m,float dt);
+void cloth_update(cloth* c,mouse* m,float dt);
 
 cloth* new_cloth(int width,int height, int spacing, int startX,int startY);
 
-void delete_cloth(cloth* c);
+void cloth_delete(cloth* c);
 #endif

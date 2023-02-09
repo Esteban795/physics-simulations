@@ -14,10 +14,11 @@ cloth* new_cloth(int width,int height, int spacing, int startX,int startY){
     int nb_sticks;
     c->sticks = create_sticks(c->particles,c->rows,c->columns,&nb_sticks);
     c->nb_sticks = nb_sticks;
+    return c;
 }
 
 
-void cloth_update(cloth* c,SDL_Renderer* renderer,mouse* m,float dt){
+void cloth_update(cloth* c,mouse* m,float dt){
     for (int i = 0; i < c->rows;i++){
         for (int j = 0; j < c->columns;j++){
             update_particle(&c->particles[i][j],dt,c->drag,c->gravity,c->elasticity,m,c->rows,c->columns);
@@ -35,7 +36,7 @@ void cloth_draw(cloth* c,SDL_Renderer* renderer){
     SDL_RenderPresent(renderer);
 }
 
-void delete_cloth(cloth* c){
+void cloth_delete(cloth* c){
     for (int i = 0; i < c->rows;i++){
         for (int j = 0; j < c->columns;j++){
             free(c->particles[i][j].sticks);

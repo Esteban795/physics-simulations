@@ -2,8 +2,6 @@
 #define PARTICLE_H
 
 #include <stdbool.h>
-
-
 #include <SDL2/SDL.h>
 #include "vect2.h"
 #include "mouse.h"
@@ -20,10 +18,10 @@ struct Stick {
     bool is_null;
 };
 
-typedef struct Stick stick;
+
 
 struct Particle {
-    stick* sticks;
+    struct Stick* sticks;
     float x;
     float y;
     float prevx;
@@ -35,6 +33,7 @@ struct Particle {
     bool is_selected;
 };
 
+typedef struct Stick stick;
 typedef struct Particle particle;
 
 

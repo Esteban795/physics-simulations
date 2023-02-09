@@ -19,13 +19,16 @@ int start_SDL(SDL_Window** window,SDL_Renderer** renderer,int width,int height, 
 }
 
 int main(int argc,char* argv[]){
-    if (argc != 2) return EXIT_FAILURE;
-    const int WIDTH = min(argv[1],600);
-    const int HEIGHT = min(argv[1],600);
+    if (argc != 3) return EXIT_FAILURE;
+    const int nb_x = min(atoi(argv[1]),150);
+    const int nb_y = min(atoi(argv[2]),150);
     SDL_Window* window;
     SDL_Renderer* renderer;
     int status = start_SDL(&window,&renderer,SCREEN_WIDTH,SCREEN_HEIGHT,"test");
     if (status == 1) return EXIT_FAILURE;
+    main_loop(renderer,nb_x,nb_y);
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
 }
 
-//gcc cloth_simulation.c -o st -W -Wall -Wextra -Wvla -fsanitize=address $(sdl2-config --cflags) -lSDL2 -lm
+//gcc cloth_simulation.c engine.c cloth.c mouse.c particle.c vect2.c -o cs -W -Wall -Wextra -Wvla -fsanitize=address $(sdl2-config --cflags) -lSDL2 -lm
