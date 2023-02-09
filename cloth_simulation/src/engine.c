@@ -48,24 +48,6 @@ int main_loop(SDL_Renderer* renderer,int width,int height){
     SDL_Delay(2000);
     update(app);
     render(app);
-    SDL_Delay(2000);
-    update(app);
-    render(app);
-    SDL_Delay(2000);
-    update(app);
-    render(app);
-    SDL_Delay(2000);
-    update(app);
-    render(app);
-    SDL_Delay(2000);
-    update(app);
-    render(app);
-    SDL_Delay(2000);
-    update(app);
-    render(app);
-    SDL_Delay(2000);
-    update(app);
-    render(app);
     while (running){
         while (SDL_PollEvent(&e)){
             if (e.type == SDL_KEYDOWN){

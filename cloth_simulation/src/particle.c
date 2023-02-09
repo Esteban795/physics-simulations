@@ -84,20 +84,24 @@ stick* create_sticks(particle** particles,int rows,int columns,int* nb_sticks){
 
 void update_stick(stick* s){
     if (!s->is_active) return;
-
-    vect2 p1 = {.x = s->p1->x,.y = s->p1->y};
-    vect2 p2 = {.x = s->p2->x,.y = s->p2->y};
-
-    vect2 difference = diff(p1,p2);
-    float dist = get_length(difference);
-    float diff_factor = 0.5f * (s->length - dist)/dist;
-    vect2 offset = {.x = difference.x * diff_factor,.y = difference.y * diff_factor};
-
-    s->p1->x = p1.x + offset.x;
-    s->p1->y = p1.y + offset.y;
-
-    s->p2->x = p2.x + offset.x;
-    s->p2->y = p2.y + offset.y;
+    printf("Avant modif : ");
+    print_stick(*s);
+    float dx = s->p1->x - s->p2->x;
+    float dy = s->p1->y - s->p2->y;
+    float distance = sqrt(dx * dx + dy * dy);
+    float norm = (s->length - distance)/distance;
+    printf("Dx : %f,Dy : %f, norm : %f\n",dx,dy,norm);
+    if (!s->p1->is_pinned){
+        s->p1->x -= dx * norm;
+        s->p1->y -= dy * norm;
+    }
+    if (!s->p2->is_pinned){
+        s->p2->x += dx * norm;
+        s->p2->y += dy * norm;
+    }
+    printf("Après modif : ");
+    print_stick(*s);
+    printf("\n\n");
 }
 
 void draw_stick(SDL_Renderer* renderer,stick s){
@@ -197,14 +201,13 @@ void update_particle(particle* p,float dt,float drag, vect2 acceleration,float e
         p->y = p->inity;
         return;
     }
-    print_particle(*p);
     float new_x = p->x + (p->x - p->prevx) * (1.0f - drag) + acceleration.x * (1.0f - drag) * dt * dt;
     float new_y = p->y + (p->y - p->prevy) * (1.0f - drag) + acceleration.y * (1.0f - drag) * dt * dt;
     p->prevx = p->x;
     p->prevy = p->y;
     p->x = new_x;
     p->y = new_y;
-    keep_inside_view(p,SCREEN_WIDTH,SCREEN_HEIGHT);
+    //keep_inside_view(p,SCREEN_WIDTH,SCREEN_HEIGHT);
 }
 
 //gcc particle.c vect2.c mouse.c -o particle -Wall -Wvla -Wextra -fsanitize=address $(sdl2-config --cflags) -lSDL2 -lm

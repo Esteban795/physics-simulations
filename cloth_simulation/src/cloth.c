@@ -24,7 +24,6 @@ void cloth_update(cloth* c,mouse* m,float dt){
             update_particle(&c->particles[i][j],dt,c->drag,c->gravity,c->elasticity,m,c->rows,c->columns);
         }
     }
-    printf("\n\n\n");
     for (int i = 0; i < c->nb_sticks;i++){
         update_stick(&c->sticks[i]);
     }
