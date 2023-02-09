@@ -40,7 +40,9 @@ typedef struct Particle particle;
 
 stick* create_sticks(particle** particles,int rows,int columns,int* nb_sticks);
 
-void update_sticks(stick* sticks,int n);
+void draw_stick(SDL_Renderer* renderer,stick s);
+
+void update_stick(stick* s);
 
 float dist(particle p1,particle p2);
 
@@ -50,5 +52,5 @@ void print_particle(particle p);
 
 particle** create_particles(int startX,int startY,int width,int height,int spacing);
 
-void update_particles(particle* particles,int n);
+void update_particle(particle* p,float dt,float drag, vect2 acceleration,float elasticity,mouse* m,int width,int height);
 #endif

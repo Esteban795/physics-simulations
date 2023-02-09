@@ -66,9 +66,9 @@ void update_stick(stick* s){
     s->p2->y = p2.y + offset.y;
 }
 
-void draw_stick(SDL_Renderer* renderer,stick* s){
-    if (!s->is_active) return;
-    SDL_RenderDrawLine(renderer,s->p1->x,s->p1->y,s->p2->x,s->p2->y);
+void draw_stick(SDL_Renderer* renderer,stick s){
+    if (!s.is_active) return;
+    SDL_RenderDrawLine(renderer,s.p1->x,s.p1->y,s.p2->x,s.p2->y);
 }
 
 //gcc stick.c -o stick -Wall -Wvla -Wextra -fsanitize=address

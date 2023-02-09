@@ -18,5 +18,11 @@ struct Cloth {
 
 typedef struct Cloth cloth;
 
+void cloth_draw(cloth* c,SDL_Renderer* renderer);
 
+void cloth_update(cloth* c,SDL_Renderer* renderer,mouse* m,float dt);
+
+cloth* new_cloth(int width,int height, int spacing, int startX,int startY);
+
+void delete_cloth(cloth* c);
 #endif
