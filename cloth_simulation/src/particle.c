@@ -95,15 +95,11 @@ void print_particle(particle p){
 
 
 
-particle** create_particles(int startX,int startY,int width,int height,int spacing,vect2* dimensions){
-    int p = width/spacing;
-    int n = height/spacing;
-    dimensions->x = p;
-    dimensions->y = n;
-    particle** particles = malloc(sizeof(particle*) * n);
-    for (int i = 0; i < n;i++){
-        particles[i] = malloc(sizeof(particle) * p);
-        for (int j = 0; j < p;j++){
+particle** create_particles(int startX,int startY,int width,int height,int spacing){
+    particle** particles = malloc(sizeof(particle*) * height);
+    for (int i = 0; i < height;i++){
+        particles[i] = malloc(sizeof(particle) * width);
+        for (int j = 0; j < width;j++){
             particle p = {.mass = 10,.x = startX + j * spacing,.y = startY + i * spacing};
             p.prevx = p.initx = p.x;
             p.prevy = p.inity = p.y;
@@ -121,6 +117,26 @@ particle** create_particles(int startX,int startY,int width,int height,int spaci
 void add_stick(particle* p,stick s,int index){
     p->sticks[index] = s;
 }
+
+void keep_inside_view(particle* p,int width,int height){
+    if (p->x > width){
+        p->x = width;
+        p->prevx = p->x;
+    }
+    if (p->x < 0){
+        p->x = 0;
+        p->prevx = p->x;
+    }
+    if (p->y > height){
+        p->y = height;
+        p->prevy = p->y;
+    }
+    if (p->y < 0){
+        p->y = 0;
+        p->prevy = p->y;
+    }
+}
+
 
 void update_particle(particle* p,float dt,float drag, vect2 acceleration,float elasticity,mouse* m,int width,int height){
     vect2 mouse_pos = m->pos;
@@ -157,84 +173,6 @@ void update_particle(particle* p,float dt,float drag, vect2 acceleration,float e
     p->x = new_x;
     p->y = new_y;
     keep_inside_view(p,width,height);
-}
-
-
-void keep_inside_view(particle* p,int width,int height){
-    if (p->x > width){
-        p->x = width;
-        p->prevx = p->x;
-    }
-    if (p->x < 0){
-        p->x = 0;
-        p->prevx = p->x;
-    }
-    if (p->y > height){
-        p->y = height;
-        p->prevy = p->y;
-    }
-    if (p->y < 0){
-        p->y = 0;
-        p->prevy = p->y;
-    }
-}
-
-int main(void){
-    vect2 dim;
-    particle** particles = create_particles(100,100,500,500,200,&dim);
-    mouse* m = mouse_create(300,300);
-    int rows = dim.y;
-    int columns = dim.x;
-    int nb_sticks;
-    stick* sticks = create_sticks(particles,rows,columns,&nb_sticks);
-    vect2 gravity = {.x = 0.0f,.y = 981.0f};
-    printf("Initialement, les particules sont en  :\n");
-    for (int i = 0; i < rows;i++){
-        for (int j = 0; j < columns;j++){
-            print_particle(particles[i][j]);
-        }
-    }
-    printf("\n Les sticks sont  : \n");
-    for (int i = 0; i < nb_sticks;i++){
-        print_stick(sticks[i]);
-    }
-
-    printf("On update les particules. \n\n");
-    for (int i = 0; i < rows;i++){
-        for (int j = 0; j < columns;j++){
-            update_particle(&particles[i][j],0.1,0.01,gravity,10.0f,m,600,600);
-        }
-    }
-    printf("Après update des PARTICULES :\n");
-    for (int i = 0; i < rows;i++){
-        for (int j = 0; j < columns;j++){
-            print_particle(particles[i][j]);
-        }
-    }
-    for (int i = 0; i < nb_sticks;i++){
-        update_stick(&sticks[i]);
-    }
-    printf("\n\n\n\n\n\nApres update des sticks :\n");
-    for (int i = 0; i < rows;i++){
-        for (int j = 0; j < columns;j++){
-            print_particle(particles[i][j]);
-        }
-    }
-    printf("\n\n");
-    printf("\n Les sticks sont finalement : \n");
-    for (int i = 0; i < nb_sticks;i++){
-        print_stick(sticks[i]);
-    }
-    for (int i = 0; i < rows;i++){
-        for (int j = 0; j < columns;j++){
-            free(particles[i][j].sticks);
-        }
-        free(particles[i]);
-    }
-    free(sticks);
-    free(m);
-    free(particles);
-    return 0;
 }
 
 //gcc particle.c vect2.c mouse.c -o particle -Wall -Wvla -Wextra -fsanitize=address $(sdl2-config --cflags) -lSDL2 -lm
