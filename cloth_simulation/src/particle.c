@@ -1,5 +1,38 @@
 #include "../include/particle.h"
 
+void DrawCircle(SDL_Renderer* renderer, int32_t centreX, int32_t centreY, int32_t radius){
+   const int32_t diameter = (radius * 2);
+   int32_t x = (radius - 1);
+   int32_t y = 0;
+   int32_t tx = 1;
+   int32_t ty = 1;
+   int32_t error = (tx - diameter);
+   while (x >= y){
+      //  Each of the following renders an octant of the circle
+      SDL_RenderDrawPoint(renderer, centreX + x, centreY - y);
+      SDL_RenderDrawPoint(renderer, centreX + x, centreY + y);
+      SDL_RenderDrawPoint(renderer, centreX - x, centreY - y);
+      SDL_RenderDrawPoint(renderer, centreX - x, centreY + y);
+      SDL_RenderDrawPoint(renderer, centreX + y, centreY - x);
+      SDL_RenderDrawPoint(renderer, centreX + y, centreY + x);
+      SDL_RenderDrawPoint(renderer, centreX - y, centreY - x);
+      SDL_RenderDrawPoint(renderer, centreX - y, centreY + x);
+      if (error <= 0){
+        ++y;
+        error += ty;
+        ty += 2;
+      }
+      if (error > 0){
+        --x;
+        tx += 2;
+        error += (tx - diameter);
+      }
+   }
+}
+
+void add_stick(particle* p,stick s,int index){
+    p->sticks[index] = s;
+}
 
 void print_stick(stick s){
     printf("P1 (%f,%f),P2 : (%f,%f), length : %f\n",s.p1->x,s.p1->y,s.p2->x,s.p2->y,s.length);
@@ -23,21 +56,21 @@ stick create_new_stick(particle* p1,particle* p2){
 
 stick* create_sticks(particle** particles,int rows,int columns,int* nb_sticks){
     *nb_sticks = get_nb_sticks(rows,columns);
-    stick* sticks = malloc(sizeof(stick) * *nb_sticks); 
+    stick* sticks = malloc(sizeof(stick) * *nb_sticks);
     int index = 0;
     for (int i = 0; i < rows;i++){
         for (int j = 0; j < columns;j++){
             if (j != 0){
                 stick s = create_new_stick(&particles[i][j],&particles[i][j - 1]); //left particle
-                particles[i][j - 1].sticks[0] = s;
-                particles[i][j].sticks[0] = s;
+                add_stick(&particles[i][j - 1],s,0);
+                add_stick(&particles[i][j],s,0);
                 sticks[index] = s;
                 index++;
             }
             if (i != 0){
                 stick s = create_new_stick(&particles[i][j],&particles[i - 1][j]); //Top particle
-                particles[i - 1][j].sticks[0] = s;
-                particles[i][j].sticks[0] = s;
+                add_stick(&particles[i - 1][j],s,1);
+                add_stick(&particles[i][j],s,1);
                 sticks[index] = s;
                 index++;
             }
@@ -51,12 +84,13 @@ stick* create_sticks(particle** particles,int rows,int columns,int* nb_sticks){
 
 void update_stick(stick* s){
     if (!s->is_active) return;
+
     vect2 p1 = {.x = s->p1->x,.y = s->p1->y};
     vect2 p2 = {.x = s->p2->x,.y = s->p2->y};
 
     vect2 difference = diff(p1,p2);
     float dist = get_length(difference);
-    float diff_factor = 0.5 * (s->length - dist)/dist;
+    float diff_factor = 0.5f * (s->length - dist)/dist;
     vect2 offset = {.x = difference.x * diff_factor,.y = difference.y * diff_factor};
 
     s->p1->x = p1.x + offset.x;
@@ -71,7 +105,7 @@ void draw_stick(SDL_Renderer* renderer,stick s){
     SDL_RenderDrawLine(renderer,s.p1->x,s.p1->y,s.p2->x,s.p2->y);
 }
 
-//gcc stick.c -o stick -Wall -Wvla -Wextra -fsanitize=address
+
 /*
 Get euclidean distance between two particles.
 */
@@ -114,10 +148,6 @@ particle** create_particles(int startX,int startY,int width,int height,int spaci
     return particles;
 }
 
-void add_stick(particle* p,stick s,int index){
-    p->sticks[index] = s;
-}
-
 void keep_inside_view(particle* p,int width,int height){
     if (p->x > width){
         p->x = width;
@@ -144,9 +174,9 @@ void update_particle(particle* p,float dt,float drag, vect2 acceleration,float e
     float cursorToPosDist = cursorToPosDir.x * cursorToPosDir.x + cursorToPosDir.y * cursorToPosDir.y;
     p->is_selected = cursorToPosDist < m->cursor_size * m->cursor_size;
     
-    if (!p->sticks[0].is_null) p->sticks[0].is_selected = true;
-    if (!p->sticks[1].is_null) p->sticks[1].is_selected = true;
-
+    if (!p->sticks[0].is_null) p->sticks[0].is_selected = p->is_selected;
+    if (!p->sticks[1].is_null) p->sticks[1].is_selected = p->is_selected;
+    /*
     if (m->left_button_down && p->is_selected){
         vect2 diff = mouse_diff_pos(m);
         if (diff.x > elasticity) diff.x = elasticity;
@@ -161,18 +191,20 @@ void update_particle(particle* p,float dt,float drag, vect2 acceleration,float e
         if (!p->sticks[0].is_null) p->sticks[0].is_active = false;
         if (!p->sticks[1].is_null) p->sticks[1].is_active = false;
     }
+    */
     if (p->is_pinned){
         p->x = p->initx;
         p->y = p->inity;
         return;
     }
+    print_particle(*p);
     float new_x = p->x + (p->x - p->prevx) * (1.0f - drag) + acceleration.x * (1.0f - drag) * dt * dt;
     float new_y = p->y + (p->y - p->prevy) * (1.0f - drag) + acceleration.y * (1.0f - drag) * dt * dt;
     p->prevx = p->x;
     p->prevy = p->y;
     p->x = new_x;
     p->y = new_y;
-    keep_inside_view(p,width,height);
+    keep_inside_view(p,SCREEN_WIDTH,SCREEN_HEIGHT);
 }
 
 //gcc particle.c vect2.c mouse.c -o particle -Wall -Wvla -Wextra -fsanitize=address $(sdl2-config --cflags) -lSDL2 -lm

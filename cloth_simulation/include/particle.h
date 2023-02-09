@@ -6,6 +6,9 @@
 #include "vect2.h"
 #include "mouse.h"
 
+#define SCREEN_WIDTH 700
+#define SCREEN_HEIGHT 700
+
 struct Stick;
 struct Particle;
 
@@ -36,6 +39,11 @@ struct Particle {
 typedef struct Stick stick;
 typedef struct Particle particle;
 
+void DrawCircle(SDL_Renderer* renderer, int32_t centreX, int32_t centreY, int32_t radius);
+
+void add_stick(particle* p,stick s,int index);
+
+void print_stick(stick s);
 
 stick* create_sticks(particle** particles,int rows,int columns,int* nb_sticks);
 

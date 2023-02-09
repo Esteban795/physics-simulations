@@ -3,7 +3,7 @@
 
 #include <SDL2/SDL.h>
 #include "cloth.h"
-#define SPACING 20
+#define SPACING 100
 
 
 struct Application {

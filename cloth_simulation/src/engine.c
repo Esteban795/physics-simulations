@@ -22,6 +22,11 @@ void render(application* app){
     SDL_SetRenderDrawColor(app->renderer,255,255,255,255);
     SDL_RenderClear(app->renderer);
     SDL_SetRenderDrawColor(app->renderer,0,0,0,255);
+    for (int i = 0; i < app->c->rows;i++){
+        for (int j = 0; j < app->c->columns;j++){
+            DrawCircle(app->renderer,app->c->particles[i][j].x,app->c->particles[i][j].y,20);
+        }
+    }
     cloth_draw(app->c,app->renderer);
     SDL_RenderPresent(app->renderer);
 }
@@ -36,9 +41,32 @@ int main_loop(SDL_Renderer* renderer,int width,int height){
     application* app = new_app(renderer,width,height,100,100);
     SDL_Event e;
     int running = 1;
+    render(app);
+    SDL_Delay(2000);
+    update(app);
+    render(app);
+    SDL_Delay(2000);
+    update(app);
+    render(app);
+    SDL_Delay(2000);
+    update(app);
+    render(app);
+    SDL_Delay(2000);
+    update(app);
+    render(app);
+    SDL_Delay(2000);
+    update(app);
+    render(app);
+    SDL_Delay(2000);
+    update(app);
+    render(app);
+    SDL_Delay(2000);
+    update(app);
+    render(app);
+    SDL_Delay(2000);
+    update(app);
+    render(app);
     while (running){
-        update(app);
-        render(app);
         while (SDL_PollEvent(&e)){
             if (e.type == SDL_KEYDOWN){
                 switch (e.key.keysym.sym){
@@ -48,6 +76,7 @@ int main_loop(SDL_Renderer* renderer,int width,int height){
                 }
             }
         }
+        SDL_Delay(16);
     }
     destroy(app);
     return 0;

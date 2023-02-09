@@ -2,7 +2,6 @@
 
 #define SCREEN_WIDTH 700
 #define SCREEN_HEIGHT 700
-#define SPACING 20
 
 
 int min(int a,int b){

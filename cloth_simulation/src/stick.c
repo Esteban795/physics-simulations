@@ -18,16 +18,15 @@ stick create_new_stick(particle* p1,particle* p2){
 
 void create_sticks(particle** particles,int rows,int columns,int* nb_sticks){
     *nb_sticks = get_nb_sticks(particles,rows,columns);
-    
     for (int i = 0; i < rows;i++){
         for (int j = 0; j < columns;j++){
             if (j != 0){
-                stick s = create_new_stick(&particles[i][j],&particles[i][j - 1]); //left particle
+                stick s = create_new_stick(&particles[i][j],&particles[i][j - 1]); //creates a stick between current and left particles
                 particles[i][j - 1].sticks[0] = s;
                 particles[i][j].sticks[0] = s;
             }
             if (i != 0){
-                stick s = create_new_stick(&particles[i][j],&particles[i - 1][j]); //Top particle
+                stick s = create_new_stick(&particles[i][j],&particles[i - 1][j]); //creates a stick between current and top particles
                 particles[i - 1][j].sticks[0] = s;
                 particles[i][j].sticks[0] = s;
             }
