@@ -8,7 +8,7 @@ LDFLAGS = -export-dynamic $(shell sdl2-config --libs)
 DEPENDENCIES = $(SRCDIR)/engine.c $(SRCDIR)/geometry.c $(SRCDIR)/vect2.c $(SRCDIR)/ball.c
 
 build:
-	gcc $(SRCDIR)/elastic_collision.c -o ./elastic_collision $(CFLAGS) $(DEPENDENCIES)
+	gcc $(SRCDIR)/elastic_collision.c -o ./elastic_collision $(DEPENDENCIES) $(CFLAGS) 
 
 run:
 	./elastic_collision 6
