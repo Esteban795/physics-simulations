@@ -7,11 +7,15 @@ struct Stick {
     particle* p1;
     particle* p2;
     float length;
+    bool is_active;
+    bool is_selected;
+    bool is_null;
 };
 
 typedef struct Stick stick;
 
-stick* create_sticks(particle* particles,int n);
+void create_sticks(particle** particles,int rows,int columns,int* nb_sticks);
+
 
 void update_sticks(stick* sticks,int n);
 #endif
