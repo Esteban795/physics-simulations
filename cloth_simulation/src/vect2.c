@@ -1,5 +1,14 @@
-#include "../include/vect2.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
 
+
+struct vect2 {
+    float x;
+    float y;
+};
+
+typedef struct vect2 vect2;
 
 vect2 diff(vect2 v1,vect2 v2){
     vect2 temp = {.x = v1.x - v2.x,.y = v1.y - v2.y};
