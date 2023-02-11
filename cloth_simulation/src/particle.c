@@ -3,7 +3,7 @@
 
 #define SCREEN_WIDTH 700
 #define SCREEN_HEIGHT 700
-#define SPACING 20
+#define SPACING 40
 
 
 //random ass function
@@ -96,6 +96,11 @@ void update_pos(mouse* m,int x,int y){
     m->prev_pos = m->pos;
     m->pos.x = x;
     m->pos.y = y;
+}
+
+void increase_cursor_size(mouse* m,int increment){
+    if (m->cursor_size + increment > m->max_cursor_size || m->cursor_size + increment < m->min_cursor_size) return;
+    m->cursor_size += increment;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////:
@@ -246,6 +251,8 @@ void update_stick(stick* s){
 
 void draw_stick(SDL_Renderer* renderer,stick s){
     if (!s.is_active) return;
+    if (s.is_selected) SDL_SetRenderDrawColor(renderer,255,0,0,255);
+    else SDL_SetRenderDrawColor(renderer,0,0,0,255);
     SDL_RenderDrawLine(renderer,s.p1->x,s.p1->y,s.p2->x,s.p2->y);
 }
 
@@ -315,6 +322,24 @@ void update_particle(particle* p,float dt,float drag, vect2 acceleration,float e
     
     if (!p->sticks[0].is_null) p->sticks[0].is_selected = p->is_selected;
     if (!p->sticks[1].is_null) p->sticks[1].is_selected = p->is_selected;
+
+    if (m->left_button_down && p->is_selected){
+        vect2 difference = diff(m->pos,m->prev_pos);
+        if (difference.x > elasticity) difference.x = elasticity;
+        if (difference.x < -elasticity) difference.x = -elasticity;
+        if (difference.y > elasticity) difference.y = elasticity;
+        if (difference.y < -elasticity) difference.y = -elasticity;
+        p->prevx = p->x - difference.x;
+        p->prevy = p->y - difference.y;
+    }
+
+    if (m->right_button_down && p->is_selected){
+        printf("On est dans le test\n");
+        if (!p->sticks[0].is_null) p->sticks[0].is_active = false;
+        if (!p->sticks[1].is_null) p->sticks[1].is_active = false;
+    }
+
+
     if (p->is_pinned){
         p->x = p->initx;
         p->y = p->inity;
@@ -362,9 +387,10 @@ cloth* cloth_new(float drag,float elasticity,int rows,int columns){
 //Cloth 
 
 void cloth_update(cloth* c,mouse* m){
+    float dt = 0.016f;
     for (int i = 0;i < c->rows;i++){
         for (int j = 0; j < c->columns;j++){
-            update_particle(&c->particles[i][j],0.016f,c->drag,c->acceleration,c->elasticity,m);
+            update_particle(&c->particles[i][j],dt,c->drag,c->acceleration,c->elasticity,m);
         }
     }
     for (int i = 0; i < c->nb_sticks;i++){
@@ -387,7 +413,7 @@ void cloth_draw(SDL_Renderer* renderer,cloth* c){
 }
 
 
-void delete_cloth(cloth* c){
+void cloth_delete(cloth* c){
     for (int i = 0; i < c->rows;i++){
         for (int j = 0; j < c->columns;j++){
             free(c->particles[i][j].sticks);
@@ -402,39 +428,110 @@ void delete_cloth(cloth* c){
 
 //////////////////////////////////////////////////////////////////////////:::
 
+struct Application {
+    SDL_Renderer* renderer;
+    cloth* c;
+    mouse* m;
+};
+
+typedef struct Application application;
+
+application* application_create(SDL_Renderer* renderer,float drag,float elasticity,int rows,int columns){
+    application* app = malloc(sizeof(application));
+    app ->c = cloth_new(drag,elasticity,rows,columns);
+    app->m = mouse_create(0,0);
+    app->renderer = renderer;
+    return app;
+}
+
+void application_delete(application* app){
+    cloth_delete(app->c);
+    free(app->m);
+    free(app);
+}
+
+void application_update(application* app){
+    cloth_update(app->c,app->m);
+}
+
+void application_render(application* app){
+    SDL_SetRenderDrawColor(app->renderer,255,255,255,255);
+    SDL_RenderClear(app->renderer);
+    SDL_SetRenderDrawColor(app->renderer,0,0,0,255);
+    cloth_draw(app->renderer,app->c);
+    SDL_RenderPresent(app->renderer);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+int events_handling(mouse* m){
+    SDL_Event e;
+    while (SDL_PollEvent(&e)){
+        switch (e.type)
+        {
+        case SDL_QUIT:
+            return 1;
+        
+        case SDL_KEYDOWN:
+            if (e.key.keysym.sym == SDLK_ESCAPE) return 1;
+            break;
+        
+        case SDL_MOUSEMOTION:{
+                int x = e.motion.x;
+                int y = e.motion.y;
+                m->pos.x = x;
+                m->pos.y = y;
+            }
+            break;
+
+        case SDL_MOUSEBUTTONDOWN:{
+                int x,y;
+                SDL_GetMouseState(&x,&y);
+                update_pos(m,x,y);
+                if (!m->left_button_down && e.button.button == SDL_BUTTON_LEFT) m->left_button_down = true;
+                if (!m->right_button_down && e.button.button == SDL_BUTTON_RIGHT) {
+                    m->right_button_down = true;
+                    printf("Right click\n");
+                }
+            }
+            break;
+        
+        case SDL_MOUSEBUTTONUP:{
+                if (m->left_button_down && e.button.button == SDL_BUTTON_LEFT) m->left_button_down = false;
+                if (m->right_button_down && e.button.button == SDL_BUTTON_RIGHT) m->right_button_down = false;
+            }
+            break;
+        case SDL_MOUSEWHEEL:
+            if (e.wheel.y > 0) increase_cursor_size(m,10);
+            else if (e.wheel.y < 0) increase_cursor_size(m,-10);
+            break;
+        default:
+            break;
+        }
+    }
+    return 0;
+}
+
 
 int main(int argc, char* argv[]){
     if (argc != 3) return EXIT_FAILURE;
     int rows = atoi(argv[1]);
     int columns = atoi(argv[2]);
-    cloth* c = cloth_new(0.01f,10.0f,rows,columns);
     SDL_Window* window;
     SDL_Renderer* renderer;
     int status = start_SDL(&window,&renderer,SCREEN_WIDTH,SCREEN_HEIGHT,"test");
     if (status == 1) return EXIT_FAILURE;
-    SDL_Event e;
-    int running = 1;
-    mouse* m = mouse_create(0,0);
-    while (running){
-        while (SDL_PollEvent(&e)){
-            if (e.type == SDL_KEYDOWN){
-                switch (e.key.keysym.sym){
-                    case SDLK_q:
-                        running = 0;
-                        break;
-                }
-            }
-        }
-        cloth_update(c,m);
-        cloth_draw(renderer,c);
-        SDL_RenderPresent(renderer);
+    application* app = application_create(renderer,0.01f,10.0f,rows,columns);
+    while (true){
+        if (events_handling(app->m) == 1) break;
+        application_update(app);
+        application_render(app);
         SDL_Delay(16);
     }
-    delete_cloth(c);
-    free(m);
+    application_delete(app);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
-
+    return 0;
 }
 
 //gcc particle.c -o particle -Wall -Wvla -Wextra -fsanitize=address $(sdl2-config --cflags) -lSDL2 -lm
