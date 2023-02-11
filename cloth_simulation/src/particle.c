@@ -1,12 +1,25 @@
-
 #include <SDL2/SDL.h>
 #include <stdbool.h>
 
-
 #define SCREEN_WIDTH 700
 #define SCREEN_HEIGHT 700
-#define SPACING 100
+#define SPACING 20
 
+
+//random ass function
+
+int start_SDL(SDL_Window** window,SDL_Renderer** renderer,int width,int height, const char* title){
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) return 1;
+    *window = SDL_CreateWindow(title,SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,width,height,SDL_WINDOW_SHOWN);
+    if (*window == NULL) return 1;
+    *renderer = SDL_CreateRenderer(*window,-1,SDL_RENDERER_ACCELERATED);
+    if (*renderer == NULL) return 1;
+    return 0;
+}
+
+
+
+// VECT2
 
 struct vect2 {
     float x;
@@ -37,6 +50,60 @@ float get_length(vect2 p){
     return sqrt(p.x * p.x + p.y * p.y);
 }
 
+///////////////////////////////////////////////////////////////////////
+
+// MOUSE
+struct Mouse {
+    vect2 pos;
+    vect2 prev_pos;
+    bool left_button_down;
+    bool right_button_down;
+    float cursor_size;
+    float max_cursor_size;
+    float min_cursor_size;
+};
+
+typedef struct Mouse mouse;
+
+
+mouse* mouse_create(float x,float y){
+    mouse* m = malloc(sizeof(mouse));
+    vect2 pos = {.x = x,.y = y};
+    m->pos = pos;
+    m->prev_pos = pos;
+    m->cursor_size = 20;
+    m->left_button_down = false;
+    m->right_button_down = false;
+    m->max_cursor_size = 100;
+    m->min_cursor_size = 20;
+    return m;
+}
+
+vect2 mouse_get_pos(mouse* m){
+    return m->pos;
+}
+
+vect2 mouse_get_prevpos(mouse* m){
+    return m->prev_pos;
+}
+
+vect2 mouse_diff_pos(mouse* m){
+    vect2 temp = {.x = m->pos.x - m->prev_pos.x,.y = m->pos.y - m->prev_pos.y};
+    return temp;
+}
+
+void update_pos(mouse* m,int x,int y){
+    m->prev_pos = m->pos;
+    m->pos.x = x;
+    m->pos.y = y;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////:
+
+
+// STICKS AND POINTS
+
+
 struct Stick;
 struct Particle;
 
@@ -48,8 +115,6 @@ struct Stick {
     bool is_selected;
     bool is_null;
 };
-
-
 
 struct Particle {
     struct Stick* sticks;
@@ -203,11 +268,11 @@ void print_particle(particle p){
 
 
 
-particle** create_particles(int startX,int startY,int width,int height,int spacing){
-    particle** particles = malloc(sizeof(particle*) * height);
-    for (int i = 0; i < height;i++){
-        particles[i] = malloc(sizeof(particle) * width);
-        for (int j = 0; j < width;j++){
+particle** create_particles(int startX,int startY,int rows,int columns,int spacing){
+    particle** particles = malloc(sizeof(particle*) * rows);
+    for (int i = 0; i < rows;i++){
+        particles[i] = malloc(sizeof(particle) * columns);
+        for (int j = 0; j < columns;j++){
             particle p = {.mass = 10,.x = startX + j * spacing,.y = startY + i * spacing};
             p.prevx = p.initx = p.x;
             p.prevy = p.inity = p.y;
@@ -242,8 +307,7 @@ void keep_inside_view(particle* p,int width,int height){
 }
 
 
-void update_particle(particle* p,float dt,float drag, vect2 acceleration,float elasticity){
-    /*
+void update_particle(particle* p,float dt,float drag, vect2 acceleration,float elasticity,mouse* m){
     vect2 mouse_pos = m->pos;
     vect2 cursorToPosDir = {.x = p->x - mouse_pos.x,.y = p->y - mouse_pos.y};
     float cursorToPosDist = cursorToPosDir.x * cursorToPosDir.x + cursorToPosDir.y * cursorToPosDir.y;
@@ -251,7 +315,6 @@ void update_particle(particle* p,float dt,float drag, vect2 acceleration,float e
     
     if (!p->sticks[0].is_null) p->sticks[0].is_selected = p->is_selected;
     if (!p->sticks[1].is_null) p->sticks[1].is_selected = p->is_selected;
-    */
     if (p->is_pinned){
         p->x = p->initx;
         p->y = p->inity;
@@ -266,74 +329,93 @@ void update_particle(particle* p,float dt,float drag, vect2 acceleration,float e
     //keep_inside_view(p,SCREEN_WIDTH,SCREEN_HEIGHT);
 }
 
-int start_SDL(SDL_Window** window,SDL_Renderer** renderer,int width,int height, const char* title){
-    if (SDL_Init(SDL_INIT_VIDEO) != 0) return 1;
-    *window = SDL_CreateWindow(title,SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,width,height,SDL_WINDOW_SHOWN);
-    if (*window == NULL) return 1;
-    *renderer = SDL_CreateRenderer(*window,-1,SDL_RENDERER_ACCELERATED);
-    if (*renderer == NULL) return 1;
-    return 0;
-}
+///////////////////////////////////////////////////////////////////////////:::
 
-void update(particle** particles,int rows,int columns,stick* sticks,int nb_sticks){
-    vect2 grav = {.x = 0.0f,.y = 981.0f};
-    for (int i = 0;i < rows;i++){
-        for (int j = 0; j < columns;j++){
-            update_particle(&particles[i][j],0.01f,0.01f,grav,10.0f);
+struct Cloth {
+    vect2 acceleration;
+    float drag;
+    float elasticity;
+    particle** particles;
+    int rows;
+    int columns;
+    stick* sticks;
+    int nb_sticks;
+};
+
+typedef struct Cloth cloth;
+
+
+cloth* cloth_new(float drag,float elasticity,int rows,int columns){
+    cloth* c = malloc(sizeof(cloth));
+    vect2 acceleration = {.x = 0.0f,.y = 981.0f};
+    c->acceleration = acceleration;
+    c->drag = drag;
+    c->elasticity = elasticity;
+    c->rows = rows;
+    c->columns = columns;
+    c->particles = create_particles(100,100,rows,columns,SPACING);
+    int nb_sticks;
+    c->sticks = create_sticks(c->particles,rows,columns,&nb_sticks);
+    c->nb_sticks = nb_sticks;
+    return c;
+}
+//Cloth 
+
+void cloth_update(cloth* c,mouse* m){
+    for (int i = 0;i < c->rows;i++){
+        for (int j = 0; j < c->columns;j++){
+            update_particle(&c->particles[i][j],0.016f,c->drag,c->acceleration,c->elasticity,m);
         }
     }
-    for (int i = 0; i < nb_sticks;i++){
-        update_stick(&sticks[i]);
+    for (int i = 0; i < c->nb_sticks;i++){
+        update_stick(&c->sticks[i]);
     }
 }
 
-
-void render(SDL_Renderer* renderer,particle** particles,int rows,int columns,stick* sticks,int nb_sticks){
+void cloth_draw(SDL_Renderer* renderer,cloth* c){
     SDL_SetRenderDrawColor(renderer,255,255,255,255);
     SDL_RenderClear(renderer);
     SDL_SetRenderDrawColor(renderer,0,0,0,255);
-    for (int i = 0; i < rows;i++){
-        for (int j = 0; j < columns;j++){
-            DrawCircle(renderer,particles[i][j].x,particles[i][j].y,20);
+    for (int i = 0; i < c->rows;i++){
+        for (int j = 0; j < c->columns;j++){
+            DrawCircle(renderer,c->particles[i][j].x,c->particles[i][j].y,5);
         }
     }
-    for (int i = 0; i < nb_sticks;i++){
-        draw_stick(renderer,sticks[i]);
+    for (int i = 0; i < c->nb_sticks;i++){
+        draw_stick(renderer,c->sticks[i]);
     }
-    SDL_RenderPresent(renderer);
 }
 
-void free_all(particle** particles,int rows,int columns,stick* sticks){
-    for (int i = 0; i < rows;i++){
-        for (int j = 0; j < columns;j++){
-            free(particles[i][j].sticks);
+
+void delete_cloth(cloth* c){
+    for (int i = 0; i < c->rows;i++){
+        for (int j = 0; j < c->columns;j++){
+            free(c->particles[i][j].sticks);
         }
-        free(particles[i]);
+        free(c->particles[i]);
     }
-    free(particles);
-    free(sticks);
+    free(c->particles);
+    free(c->sticks);
+    free(c);
 }
+
+
+//////////////////////////////////////////////////////////////////////////:::
+
 
 int main(int argc, char* argv[]){
     if (argc != 3) return EXIT_FAILURE;
     int rows = atoi(argv[1]);
     int columns = atoi(argv[2]);
-    particle** particles = create_particles(100,100,columns,rows,SPACING);
-    int nb_sticks;
-    stick* sticks = create_sticks(particles,rows,columns,&nb_sticks);
+    cloth* c = cloth_new(0.01f,10.0f,rows,columns);
     SDL_Window* window;
     SDL_Renderer* renderer;
     int status = start_SDL(&window,&renderer,SCREEN_WIDTH,SCREEN_HEIGHT,"test");
     if (status == 1) return EXIT_FAILURE;
     SDL_Event e;
     int running = 1;
-    int count = 0;
-    for (int i = 0; i < rows;i++){
-        for (int j = 0;j < columns;j++){
-            print_particle(particles[i][j]);
-        }
-    }
-    while (running && count < 100){
+    mouse* m = mouse_create(0,0);
+    while (running){
         while (SDL_PollEvent(&e)){
             if (e.type == SDL_KEYDOWN){
                 switch (e.key.keysym.sym){
@@ -343,12 +425,13 @@ int main(int argc, char* argv[]){
                 }
             }
         }
-        update(particles,rows,columns,sticks,nb_sticks);
-        render(renderer,particles,rows,columns,sticks,nb_sticks);
-        SDL_Delay(100);
-        count++;
+        cloth_update(c,m);
+        cloth_draw(renderer,c);
+        SDL_RenderPresent(renderer);
+        SDL_Delay(16);
     }
-    free_all(particles,rows,columns,sticks);
+    delete_cloth(c);
+    free(m);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
 
