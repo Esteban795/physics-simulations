@@ -1,9 +1,9 @@
 #include <SDL2/SDL.h>
 #include <stdbool.h>
 
-#define SCREEN_WIDTH 700
+#define SCREEN_WIDTH 1200
 #define SCREEN_HEIGHT 700
-#define SPACING 40
+#define SPACING 20
 
 
 //random ass function
@@ -118,11 +118,11 @@ struct Stick {
     float length;
     bool is_active;
     bool is_selected;
-    bool is_null;
 };
 
 struct Particle {
-    struct Stick* sticks;
+    struct Stick* s1;
+    struct Stick* s2;
     float x;
     float y;
     float prevx;
@@ -174,12 +174,9 @@ void DrawCircle(SDL_Renderer* renderer, int32_t centreX, int32_t centreY, int32_
    }
 }
 
-void add_stick(particle* p,stick s,int index){
-    p->sticks[index] = s;
-}
 
 void print_stick(stick s){
-    printf("P1 (%f,%f),P2 : (%f,%f), length : %f\n",s.p1->x,s.p1->y,s.p2->x,s.p2->y,s.length);
+    printf("P1 (%f,%f),P2 : (%f,%f), length : %f, is_active : %d\n",s.p1->x,s.p1->y,s.p2->x,s.p2->y,s.length,s.is_active);
 }
 
 int get_nb_sticks(int rows,int columns){
@@ -193,28 +190,33 @@ int get_nb_sticks(int rows,int columns){
     return count;
 }
 
-stick create_new_stick(particle* p1,particle* p2){
-    stick s = {.p1 = p1,.p2 = p2,.length = dist(*p1,*p2),.is_active = true,.is_selected = false,.is_null = false};
+stick* create_new_stick(particle* p1,particle* p2){
+    stick* s = malloc(sizeof(stick));
+    s->p1 = p1;
+    s->p2 = p2;
+    s->length = SPACING;
+    s->is_active = true;
+    s->is_selected = false;
     return s;
 }
 
-stick* create_sticks(particle** particles,int rows,int columns,int* nb_sticks){
+stick** create_sticks(particle** particles,int rows,int columns,int* nb_sticks){
     *nb_sticks = get_nb_sticks(rows,columns);
-    stick* sticks = malloc(sizeof(stick) * *nb_sticks);
+    stick** sticks = malloc(sizeof(stick*) * *nb_sticks);
     int index = 0;
     for (int i = 0; i < rows;i++){
         for (int j = 0; j < columns;j++){
             if (j != 0){
-                stick s = create_new_stick(&particles[i][j],&particles[i][j - 1]); //left particle
-                add_stick(&particles[i][j - 1],s,0);
-                add_stick(&particles[i][j],s,0);
+                stick* s = create_new_stick(&particles[i][j],&particles[i][j - 1]); //left particle
+                particles[i][j].s1 = s;
+                particles[i][j - 1].s1 = s;
                 sticks[index] = s;
                 index++;
             }
             if (i != 0){
-                stick s = create_new_stick(&particles[i][j],&particles[i - 1][j]); //Top particle
-                add_stick(&particles[i - 1][j],s,1);
-                add_stick(&particles[i][j],s,1);
+                stick* s = create_new_stick(&particles[i][j],&particles[i - 1][j]); //Top particle
+                particles[i][j].s2 = s;
+                particles[i - 1][j].s2 = s;
                 sticks[index] = s;
                 index++;
             }
@@ -249,11 +251,9 @@ void update_stick(stick* s){
     }
 }
 
-void draw_stick(SDL_Renderer* renderer,stick s){
-    if (!s.is_active) return;
-    if (s.is_selected) SDL_SetRenderDrawColor(renderer,255,0,0,255);
-    else SDL_SetRenderDrawColor(renderer,0,0,0,255);
-    SDL_RenderDrawLine(renderer,s.p1->x,s.p1->y,s.p2->x,s.p2->y);
+void draw_stick(SDL_Renderer* renderer,stick* s){
+    if (!s->is_active) return;
+    SDL_RenderDrawLine(renderer,s->p1->x,s->p1->y,s->p2->x,s->p2->y);
 }
 
 
@@ -285,9 +285,6 @@ particle** create_particles(int startX,int startY,int rows,int columns,int spaci
             p.prevy = p.inity = p.y;
             p.is_pinned = false;
             p.is_selected = false;
-            p.sticks = malloc(sizeof(stick) * 2);
-            p.sticks[0].is_null = true;
-            p.sticks[1].is_null = true;
             particles[i][j] = p;
         }
     }
@@ -307,10 +304,6 @@ void keep_inside_view(particle* p,int width,int height){
         p->y = height;
         p->prevy = p->y;
     }
-    if (p->y < 0){
-        p->y = 0;
-        p->prevy = p->y;
-    }
 }
 
 
@@ -320,8 +313,9 @@ void update_particle(particle* p,float dt,float drag, vect2 acceleration,float e
     float cursorToPosDist = cursorToPosDir.x * cursorToPosDir.x + cursorToPosDir.y * cursorToPosDir.y;
     p->is_selected = cursorToPosDist < m->cursor_size * m->cursor_size;
     
-    if (!p->sticks[0].is_null) p->sticks[0].is_selected = p->is_selected;
-    if (!p->sticks[1].is_null) p->sticks[1].is_selected = p->is_selected;
+    if (p->s1 != NULL) p->s1->is_selected = p->is_selected; 
+    if (p->s2 != NULL) p->s2->is_selected = p->is_selected;
+    
 
     if (m->left_button_down && p->is_selected){
         vect2 difference = diff(m->pos,m->prev_pos);
@@ -333,10 +327,9 @@ void update_particle(particle* p,float dt,float drag, vect2 acceleration,float e
         p->prevy = p->y - difference.y;
     }
 
-    if (m->right_button_down && p->is_selected){
-        printf("On est dans le test\n");
-        if (!p->sticks[0].is_null) p->sticks[0].is_active = false;
-        if (!p->sticks[1].is_null) p->sticks[1].is_active = false;
+    if (m->right_button_down && p->is_selected){ //tearing
+        if (p->s1 != NULL) p->s1->is_active = false;
+        if (p->s2 != NULL) p->s2->is_active = false;
     }
 
 
@@ -351,7 +344,7 @@ void update_particle(particle* p,float dt,float drag, vect2 acceleration,float e
     p->prevy = p->y;
     p->x = new_x;
     p->y = new_y;
-    //keep_inside_view(p,SCREEN_WIDTH,SCREEN_HEIGHT);
+    keep_inside_view(p,SCREEN_WIDTH,SCREEN_HEIGHT);
 }
 
 ///////////////////////////////////////////////////////////////////////////:::
@@ -363,7 +356,7 @@ struct Cloth {
     particle** particles;
     int rows;
     int columns;
-    stick* sticks;
+    stick** sticks;
     int nb_sticks;
 };
 
@@ -388,40 +381,37 @@ cloth* cloth_new(float drag,float elasticity,int rows,int columns){
 
 void cloth_update(cloth* c,mouse* m){
     float dt = 0.016f;
+    c->acceleration.x *= 0.8f;
     for (int i = 0;i < c->rows;i++){
         for (int j = 0; j < c->columns;j++){
             update_particle(&c->particles[i][j],dt,c->drag,c->acceleration,c->elasticity,m);
         }
     }
     for (int i = 0; i < c->nb_sticks;i++){
-        update_stick(&c->sticks[i]);
+        update_stick(c->sticks[i]);
     }
 }
 
 void cloth_draw(SDL_Renderer* renderer,cloth* c){
     SDL_SetRenderDrawColor(renderer,255,255,255,255);
     SDL_RenderClear(renderer);
-    SDL_SetRenderDrawColor(renderer,0,0,0,255);
-    for (int i = 0; i < c->rows;i++){
-        for (int j = 0; j < c->columns;j++){
-            DrawCircle(renderer,c->particles[i][j].x,c->particles[i][j].y,5);
-        }
-    }
     for (int i = 0; i < c->nb_sticks;i++){
+        if (c->sticks[i]->is_selected) SDL_SetRenderDrawColor(renderer,255,0,0,255);
+        else SDL_SetRenderDrawColor(renderer,0,0,0,255);
         draw_stick(renderer,c->sticks[i]);
     }
 }
 
 
 void cloth_delete(cloth* c){
+    for (int i = 0; i < c->nb_sticks;i++){
+        free(c->sticks[i]);
+    }
     for (int i = 0; i < c->rows;i++){
-        for (int j = 0; j < c->columns;j++){
-            free(c->particles[i][j].sticks);
-        }
         free(c->particles[i]);
     }
-    free(c->particles);
     free(c->sticks);
+    free(c->particles);
     free(c);
 }
 
@@ -464,7 +454,7 @@ void application_render(application* app){
 
 //////////////////////////////////////////////////////////////////////////////////////////
 
-int events_handling(mouse* m){
+int events_handling(application* app,mouse* m){
     SDL_Event e;
     while (SDL_PollEvent(&e)){
         switch (e.type)
@@ -473,9 +463,21 @@ int events_handling(mouse* m){
             return 1;
         
         case SDL_KEYDOWN:
-            if (e.key.keysym.sym == SDLK_ESCAPE) return 1;
+            switch (e.key.keysym.sym){
+            case SDLK_ESCAPE:
+                return 1;
+            
+            case SDLK_LEFT:
+                app->c->acceleration.x = -10000;
+                break;
+            
+            case SDLK_RIGHT:
+                app->c->acceleration.x = 10000;
+                break;
+            default:
+                break;
+            }
             break;
-        
         case SDL_MOUSEMOTION:{
                 int x = e.motion.x;
                 int y = e.motion.y;
@@ -491,7 +493,6 @@ int events_handling(mouse* m){
                 if (!m->left_button_down && e.button.button == SDL_BUTTON_LEFT) m->left_button_down = true;
                 if (!m->right_button_down && e.button.button == SDL_BUTTON_RIGHT) {
                     m->right_button_down = true;
-                    printf("Right click\n");
                 }
             }
             break;
@@ -523,7 +524,7 @@ int main(int argc, char* argv[]){
     if (status == 1) return EXIT_FAILURE;
     application* app = application_create(renderer,0.01f,10.0f,rows,columns);
     while (true){
-        if (events_handling(app->m) == 1) break;
+        if (events_handling(app,app->m) == 1) break;
         application_update(app);
         application_render(app);
         SDL_Delay(16);
