@@ -11,12 +11,11 @@ build:
 	gcc $(SRCDIR)/cloth_simulation.c -o ./bin/cloth_simulation $(DEPENDENCIES) $(CFLAGS) 
 
 run:
-	./bin/cloth_simulation $(ROWS) $(HEIGHT)
+	./bin/cloth_simulation $(ROWS) $(COLUMNS)
 
 clean:
-	rm cloth_simulation
+	rm ./bin/cloth_simulation
 
 all:
 	make build
-	make run
-	clear
+	make run ROWS="30" COLUMNS="60"
