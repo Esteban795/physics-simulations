@@ -3,6 +3,10 @@
 
 #include "point.h"
 #include "stick.h"
+
+
+
+
 struct Cloth {
     vect2 acceleration;
     float drag;
