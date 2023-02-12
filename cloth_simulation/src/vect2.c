@@ -12,7 +12,7 @@ vect2 divide(vect2 v,float n){
 }
 
 float vector_magnitude(vect2 v){
-    return sqrt(v.x * v.x + v.y * v.y);
+    return sqrtf(v.x * v.x + v.y * v.y);
 }
 
 float dot_product(vect2 v1,vect2 v2){
