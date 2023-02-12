@@ -3,7 +3,7 @@
 
 #define SCREEN_WIDTH 1200
 #define SCREEN_HEIGHT 700
-#define SPACING 20
+#define SPACING 10
 
 
 //random ass function
